@@ -6,26 +6,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/schollz/boltdb-server/lib"
 )
 
 // Testing
 // curl -H "Content-Type: application/json" -X POST -d '{"bucket":"food","keystore":{"username":"xyz","password":"xyz"}}' 'http://zack:123@localhost:8080/'
 
-// Payload is how the data is entered and returned from the BoltDB server
-// DB is the name of the database file
-// Bucket is the name of the bucket in the database
-// Keystore is a map of the keys and values
-type Payload struct {
-	DB       string            `json:"db" binding:"required"`
-	Bucket   string            `json:"bucket" binding:"required"`
-	Keystore map[string]string `json:"keystore" binding:"required"`
+func init() {
+	os.Mkdir("dbs", 0644)
 }
 
 func updateDatabase(dbname string, bucket string, keystore map[string]string) (string, bool) {
-	db, err := bolt.Open(dbname+".db", 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,7 +51,7 @@ func updateDatabase(dbname string, bucket string, keystore map[string]string) (s
 func getFromDatabase(dbname string, bucket string, keys map[string]string) (string, bool, map[string]string) {
 	keystore := make(map[string]string)
 
-	db, err := bolt.Open(dbname+".db", 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return fmt.Sprintf("Error: '%s'", err.Error()), false, keystore
 	}
@@ -68,7 +65,6 @@ func getFromDatabase(dbname string, bucket string, keys map[string]string) (stri
 			if b == nil {
 				return errors.New("Bucket does not exist")
 			}
-			fmt.Println(b)
 			c := b.Cursor()
 			for k, v := c.First(); k != nil; k, v = c.Next() {
 				keystore[string(k)] = string(v)
@@ -98,7 +94,15 @@ func getFromDatabase(dbname string, bucket string, keys map[string]string) (stri
 }
 
 func deleteFromDatabase(dbname string, bucket string, keys map[string]string) (string, bool) {
-	db, err := bolt.Open(dbname+".db", 0600, nil)
+	if bucket == "-special-delete-" {
+		err := os.Remove(path.Join("dbs", dbname+".db"))
+		if err == nil {
+			return "Deleted database", true
+		} else {
+			return "Problem deleting database", false
+		}
+	}
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return fmt.Sprintf("Error: '%s'", err.Error()), false
 	}
@@ -129,7 +133,15 @@ func handleRequests(c *gin.Context) {
 		})
 		return
 	}
-	var json Payload
+	if c.Request.Method == "PUT" {
+		// Just testing crednetials
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Correct credentials",
+		})
+		return
+	}
+	var json connect.Payload
 	if c.BindJSON(&json) == nil {
 		message := "Incorrect method"
 		success := false
@@ -148,7 +160,7 @@ func handleRequests(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusNotAcceptable, gin.H{
 			"success":  false,
-			"message":  "Cannot bind JSON",
+			"message":  "Cannot bind JSON when trying to " + c.Request.Method,
 			"keystore": json.Keystore,
 		})
 	}
@@ -165,7 +177,7 @@ func main() {
 	r.GET("/v1", handleRequests)    // Get keys from BoltDB
 	r.POST("/v1", handleRequests)   // Post keys to BoltDB
 	r.DELETE("/v1", handleRequests) // Delete keys in BoltDB
-
+	r.PUT("/v1", handleRequests)
 	log.Printf("Listening on 0.0.0.0:%s\n", Port)
 	log.Printf("Authenticated with user: %s and pw: %s\n", SpecifiedUsername, SpecifiedPassword)
 	r.Run(":" + Port) // listen and serve on 0.0.0.0:8080
