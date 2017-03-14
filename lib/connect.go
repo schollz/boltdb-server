@@ -115,7 +115,11 @@ func (c *Connection) Post(bucket string, keystore map[string]string) error {
 }
 
 // Get data to database
-func (c *Connection) Get(bucket string, keystore map[string]string) (map[string]string, error) {
+func (c *Connection) Get(bucket string, keys []string) (map[string]string, error) {
+	keystore := make(map[string]string)
+	for _, key := range keys {
+		keystore[key] = ""
+	}
 	data := Payload{
 		DB:       c.DBName,
 		Bucket:   bucket,
@@ -228,7 +232,11 @@ func (c *Connection) DeleteDatabase() error {
 }
 
 // Delete data to database
-func (c *Connection) Delete(bucket string, keystore map[string]string) error {
+func (c *Connection) Delete(bucket string, keys []string) error {
+	keystore := make(map[string]string)
+	for _, key := range keys {
+		keystore[key] = ""
+	}
 	data := Payload{
 		DB:       c.DBName,
 		Bucket:   bucket,
@@ -265,7 +273,11 @@ func (c *Connection) Delete(bucket string, keystore map[string]string) error {
 }
 
 // Move data
-func (c *Connection) Move(bucket1 string, bucket2 string, keystore map[string]string) error {
+func (c *Connection) Move(bucket1 string, bucket2 string, keys []string) error {
+	keystore := make(map[string]string)
+	for _, key := range keys {
+		keystore[key] = ""
+	}
 	data := Payload{
 		DB:       c.DBName,
 		Bucket:   bucket1,
@@ -339,5 +351,5 @@ func (c *Connection) MoveTopN(bucket1 string, bucket2 string, n int) (map[string
 	if !target.Success {
 		return keystore, errors.New(target.Message)
 	}
-	return keystore, nil
+	return target.Keystore, nil
 }

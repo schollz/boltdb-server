@@ -21,6 +21,7 @@ func TestGeneral(t *testing.T) {
 	data := make(map[string]string)
 	data["person1"] = "zack"
 	data["person2"] = "bob"
+	err = conn.Post("persons2", data)
 	err = conn.Post("persons", data)
 	if err != nil {
 		t.Errorf(err.Error())
@@ -29,7 +30,23 @@ func TestGeneral(t *testing.T) {
 		t.Errorf("Problem creating directory")
 	}
 
-	data2, err := conn.GetAll("persons")
+	err = conn.Move("persons2", "people", []string{"person1", "person2"})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	data2, err := conn.GetAll("people")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if val, ok := data2["person2"]; ok {
+		if val != "bob" {
+			t.Errorf("Could not get bob back")
+		}
+	} else {
+		t.Errorf("Problem with GetAll: %v", data2)
+	}
+
+	data2, err = conn.GetAll("persons")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -41,21 +58,43 @@ func TestGeneral(t *testing.T) {
 		t.Errorf("Problem with GetAll")
 	}
 
-	toDelete := make(map[string]string)
-	toDelete["person1"] = ""
 	// Check if its there
-	data3, err := conn.Get("persons", toDelete)
+	data3, err := conn.Get("persons", []string{"person1"})
 	if len(data3) != 1 {
 		t.Errorf("Should only recieve one thing")
 	}
-	err = conn.Delete("persons", toDelete)
+	err = conn.Delete("persons", []string{"person1"})
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 	// Check if its there
-	data4, err := conn.Get("persons", toDelete)
+	data4, err := conn.Get("persons", []string{"person1"})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	if len(data4) != 0 {
 		t.Errorf("Should be deleted")
+	}
+
+	// Check if its there
+	err = conn.Post("people2", data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	data4, err = conn.MoveTopN("people2", "people3", 100)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if len(data4) != 2 {
+		t.Errorf("Problem recieving the moved things")
+	}
+	data4, err = conn.GetAll("people2")
+	if len(data4) != 0 {
+		t.Errorf("Things didn't get moved from old bucket")
+	}
+	data4, err = conn.GetAll("people3")
+	if len(data4) != 2 {
+		t.Errorf("Things didn't get moved to new bucket")
 	}
 
 	err = conn.DeleteDatabase()
