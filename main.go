@@ -124,6 +124,68 @@ func deleteFromDatabase(dbname string, bucket string, keys map[string]string) (s
 	return fmt.Sprintf("Deleted %d keys in %s", len(keys), bucket), true
 }
 
+func moveTopNKeys(dbname string, bucket1 string, bucket2 string, movenum int) (map[string]string, string, bool) {
+	keysMoved := make(map[string]string)
+
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	if err != nil {
+		return keysMoved, fmt.Sprintf("Error: '%s'", err.Error()), false
+	}
+	defer db.Close()
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket1))
+		if b == nil {
+			return errors.New("Bucket does not exist")
+		}
+		b2, _ := tx.CreateBucketIfNotExists([]byte(bucket2))
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			b.Delete(k)
+			b2.Put(k, v)
+			keysMoved[string(k)] = string(v)
+			if len(keysMoved) == movenum {
+				break
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return keysMoved, fmt.Sprintf("Error: '%s'", err.Error()), false
+	}
+	return keysMoved, fmt.Sprintf("Moved %d keys from %s to %s", len(keysMoved), bucket1, bucket2), true
+}
+
+func moveKeys(dbname string, bucket1 string, bucket2 string, keys map[string]string) (string, bool) {
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	if err != nil {
+		return fmt.Sprintf("Error: '%s'", err.Error()), false
+	}
+	defer db.Close()
+
+	numMovedKeys := 0
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket1))
+		if b == nil {
+			return errors.New("Bucket does not exist")
+		}
+		b2, _ := tx.CreateBucketIfNotExists([]byte(bucket2))
+		for key := range keys {
+			val := b.Get([]byte(key))
+			if val != nil {
+				numMovedKeys++
+				b.Delete([]byte(key))
+				b2.Put([]byte(key), val)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Sprintf("Error: '%s'", err.Error()), false
+	}
+	return fmt.Sprintf("Moved %d keys from %s to %s", numMovedKeys, bucket1, bucket2), true
+}
+
 func handleRequests(c *gin.Context) {
 	username, password, _ := c.Request.BasicAuth()
 	if username != SpecifiedUsername || password != SpecifiedPassword {
@@ -133,7 +195,7 @@ func handleRequests(c *gin.Context) {
 		})
 		return
 	}
-	if c.Request.Method == "PUT" {
+	if c.Request.Method == "PATCH" {
 		// Just testing crednetials
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
@@ -151,6 +213,15 @@ func handleRequests(c *gin.Context) {
 			message, success, json.Keystore = getFromDatabase(json.DB, json.Bucket, json.Keystore)
 		} else if c.Request.Method == "DELETE" {
 			message, success = deleteFromDatabase(json.DB, json.Bucket, json.Keystore)
+		} else if c.Request.Method == "PUT" {
+			if json.Bucket2 == "" {
+				message = "Bucket2 cannot be blank"
+				success = false
+			} else if json.MoveNumber > 0 {
+				json.Keystore, message, success = moveTopNKeys(json.DB, json.Bucket, json.Bucket2, json.MoveNumber)
+			} else {
+				message, success = moveKeys(json.DB, json.Bucket, json.Bucket2, json.Keystore)
+			}
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"success":  success,
@@ -177,7 +248,8 @@ func main() {
 	r.GET("/v1", handleRequests)    // Get keys from BoltDB
 	r.POST("/v1", handleRequests)   // Post keys to BoltDB
 	r.DELETE("/v1", handleRequests) // Delete keys in BoltDB
-	r.PUT("/v1", handleRequests)
+	r.PUT("/v1", handleRequests)    // Move keys
+	r.PATCH("/v1", handleRequests)  // Check authetnication
 	log.Printf("Listening on 0.0.0.0:%s\n", Port)
 	log.Printf("Authenticated with user: %s and pw: %s\n", SpecifiedUsername, SpecifiedPassword)
 	r.Run(":" + Port) // listen and serve on 0.0.0.0:8080

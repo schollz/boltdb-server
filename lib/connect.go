@@ -12,9 +12,11 @@ import (
 // Bucket is the name of the bucket in the database
 // Keystore is a map of the keys and values
 type Payload struct {
-	DB       string            `json:"db" binding:"required"`
-	Bucket   string            `json:"bucket" binding:"required"`
-	Keystore map[string]string `json:"keystore" binding:"required"`
+	DB         string            `json:"db" binding:"required"`
+	Bucket     string            `json:"bucket" binding:"required"`
+	Bucket2    string            `json:"bucket2"`
+	MoveNumber int               `json:"move_number"`
+	Keystore   map[string]string `json:"keystore" binding:"required"`
 }
 
 type ServerResponse struct {
@@ -49,7 +51,7 @@ func Open(address, dbname, username, password string) (*Connection, error) {
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest("PUT", c.Address+"/v1", body)
+	req, err := http.NewRequest("PATCH", c.Address+"/v1", body)
 	if err != nil {
 		return c, err
 	}
@@ -260,4 +262,82 @@ func (c *Connection) Delete(bucket string, keystore map[string]string) error {
 		return errors.New(target.Message)
 	}
 	return nil
+}
+
+// Move data
+func (c *Connection) Move(bucket1 string, bucket2 string, keystore map[string]string) error {
+	data := Payload{
+		DB:       c.DBName,
+		Bucket:   bucket1,
+		Bucket2:  bucket2,
+		Keystore: keystore,
+	}
+	payloadBytes, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(payloadBytes)
+
+	req, err := http.NewRequest("PUT", c.Address+"/v1", body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(c.Username, c.Password)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var target ServerResponse
+	err = json.NewDecoder(resp.Body).Decode(&target)
+	if err != nil {
+		return err
+	}
+	if !target.Success {
+		return errors.New(target.Message)
+	}
+	return nil
+}
+
+// Move data
+func (c *Connection) MoveTopN(bucket1 string, bucket2 string, n int) (map[string]string, error) {
+	keystore := make(map[string]string)
+	data := Payload{
+		DB:         c.DBName,
+		Bucket:     bucket1,
+		Bucket2:    bucket2,
+		Keystore:   keystore,
+		MoveNumber: n,
+	}
+	payloadBytes, err := json.Marshal(data)
+	if err != nil {
+		return keystore, err
+	}
+	body := bytes.NewReader(payloadBytes)
+
+	req, err := http.NewRequest("PUT", c.Address+"/v1", body)
+	if err != nil {
+		return keystore, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(c.Username, c.Password)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return keystore, err
+	}
+	defer resp.Body.Close()
+
+	var target ServerResponse
+	err = json.NewDecoder(resp.Body).Decode(&target)
+	if err != nil {
+		return keystore, err
+	}
+	if !target.Success {
+		return keystore, errors.New(target.Message)
+	}
+	return keystore, nil
 }
