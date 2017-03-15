@@ -237,20 +237,29 @@ func handleRequests(c *gin.Context) {
 	}
 }
 
-var Port, SpecifiedUsername, SpecifiedPassword string
+var Port string
+var Gzip bool
 
 func main() {
-	flag.StringVar(&SpecifiedUsername, "user", RandStringBytesMaskImprSrc(4), "port to use for server")
-	flag.StringVar(&SpecifiedPassword, "pass", RandStringBytesMaskImprSrc(4), "port to use for server")
+	flag.BoolVar(&Gzip, "gzip", true, "use compression")
 	flag.StringVar(&Port, "port", "8080", "port to use for server")
 	flag.Parse()
 	r := gin.Default()
-	r.GET("/v1", handleRequests)    // Get keys from BoltDB
-	r.POST("/v1", handleRequests)   // Post keys to BoltDB
-	r.DELETE("/v1", handleRequests) // Delete keys in BoltDB
-	r.PUT("/v1", handleRequests)    // Move keys
-	r.PATCH("/v1", handleRequests)  // Check authetnication
+
+	r.GET("/v1/db/:dbname/bucket/:bucket/all", getKeysAndValues)  // Get all keys and values from a bucket (no parameters)
+	r.GET("/v1/db/:dbname/bucket/:bucket/some", getKeysAndValues) // Get all keys and values specified by ?keys=key1,key2 or by JSON
+	r.GET("/v1/db/:dbname/bucket/:bucket/pop", pop)               // Delete and return first n keys + values, where n specified by ?n=100
+	r.GET("/v1/db/:dbname/bucket/:bucket/keys", getKeys)          // Get all keys in a bucket (no parameters)
+	r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
+
+	r.DELETE("/v1/db/:dbname", deleteDB)                         // Delete database file (no parameters)
+	r.DELETE("/v1/db/:dbname/bucket/:bucket", deleteBucket)      // Delete bucket (no parameters)
+	r.DELETE("/v1/db/:dbname/bucket/:bucket/keys", deleteBucket) // Delete keys, where keys are specified by JSON []string
+
+	r.POST("/v1/db/:dbname/bucket/:bucket/update", update) // Updates a database with keystore specified by JSON
+
+	r.PUT("/v1/db/:dbname/move", handleRequests) // Move keys, with buckets and keys specified by JSON
+
 	log.Printf("Listening on 0.0.0.0:%s\n", Port)
-	log.Printf("Authenticated with user: %s and pw: %s\n", SpecifiedUsername, SpecifiedPassword)
 	r.Run(":" + Port) // listen and serve on 0.0.0.0:8080
 }
