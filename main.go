@@ -186,6 +186,10 @@ func moveKeys(dbname string, bucket1 string, bucket2 string, keys map[string]str
 	return fmt.Sprintf("Moved %d keys from %s to %s", numMovedKeys, bucket1, bucket2), true
 }
 
+func getAllKeysAndValues(c *gin.Context) {
+
+}
+
 func handleRequests(c *gin.Context) {
 	username, password, _ := c.Request.BasicAuth()
 	if username != SpecifiedUsername || password != SpecifiedPassword {
