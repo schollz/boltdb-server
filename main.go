@@ -25,6 +25,7 @@ func main() {
 
 	startTime := time.Now()
 
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.GET("/v1/api", func(c *gin.Context) {
 		c.String(200, `
@@ -205,6 +206,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, keystore)
+	return
 }
 
 func handleMove(c *gin.Context) {
