@@ -1,11 +1,13 @@
 // Package connect provides functionality for directly accessing a BoltDB server
 // instance with simple functions for posting data, getting data (such as keys and buckets),
-// moving data, deleting data, and popping data. To use, make sure that you have a boltdb-server up and running which you can do simply
+// moving data, deleting data, and popping data.
+//
+// To use, make sure that you have a boltdb-server up and running which you can do simply
 // with
-// ```
-// go get github.com/schollz/boltdb-server
-// $GOPATH/bin/boltdb-server
-// ```
+//
+// 		go get github.com/schollz/boltdb-server
+// 		$GOPATH/bin/boltdb-server
+//
 package connect
 
 import (
