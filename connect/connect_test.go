@@ -4,11 +4,46 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"testing"
 )
 
 // Start server with
 // go build; .\boltdb-server.exe
+var testingServer = "http://localhost:8080"
+
+func BenchmarkPost(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m := map[string]string{"key" + strconv.Itoa(i): "value" + strconv.Itoa(i)}
+		conn.Post("benchkeys", m)
+	}
+}
+
+func BenchmarkGetKeys(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.GetKeys("benchkeys")
+	}
+}
+
+func BenchmarkGetAll(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.GetAll("benchkeys")
+	}
+}
+
+func BenchmarkGetTwo(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.Get("benchkeys", []string{"key1", "key20"})
+	}
+}
 
 func TestGeneral(t *testing.T) {
 	// Test opening DB that doesnt exist
@@ -18,7 +53,7 @@ func TestGeneral(t *testing.T) {
 	}
 
 	// Test opening DB
-	conn, err = Open("http://localhost:8080", "testdb")
+	conn, err = Open(testingServer, "testdb")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
