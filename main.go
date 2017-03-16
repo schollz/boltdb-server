@@ -26,7 +26,15 @@ func main() {
 	startTime := time.Now()
 
 	r := gin.Default()
+	r.GET("/v1/api", func(c *gin.Context) {
+		c.String(200, `
 
+/v1/db/:dbname/stats // Get map of buckets and the number of keys in each
+/v1/db/:dbname/buckets // Get list of all buckets
+/v1/db/:dbname/bucket/:bucket/numkeys  // Get all keys and values from a bucket (no parameters)
+
+`)
+	})
 	r.GET("/v1/uptime", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"uptime": time.Since(startTime).String(),
