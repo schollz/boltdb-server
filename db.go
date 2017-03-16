@@ -78,6 +78,10 @@ func updateDatabase(dbname string, bucket string, keystore map[string]string) er
 }
 
 func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return []string{}, err
+	}
+
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return []string{}, err
@@ -126,6 +130,10 @@ func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
 func getFromDatabase(dbname string, bucket string, keys []string) (map[string]string, error) {
 	keystore := make(map[string]string)
 
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return keystore, err
+	}
+
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return keystore, err
@@ -170,10 +178,17 @@ func init() {
 }
 
 func deleteDatabase(dbname string) error {
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return err
+	}
 	return os.Remove(path.Join("dbs", dbname+".db"))
 }
 
 func deleteKeys(dbname string, bucket string, keys []string) error {
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return err
+	}
+
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return err
@@ -193,6 +208,10 @@ func deleteKeys(dbname string, bucket string, keys []string) error {
 }
 
 func deleteBucket(dbname string, bucket string) error {
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return err
+	}
+
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return err
@@ -206,6 +225,10 @@ func deleteBucket(dbname string, bucket string) error {
 
 func pop(dbname string, bucket string, n int) (map[string]string, error) {
 	keystore := make(map[string]string)
+
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return keystore, err
+	}
 
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
@@ -233,6 +256,10 @@ func pop(dbname string, bucket string, n int) (map[string]string, error) {
 }
 
 func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) error {
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return err
+	}
+
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return err
