@@ -127,7 +127,21 @@ func (c *Connection) Pop(bucket string, n int) (keystore map[string]string, err 
 	return keystore, err
 }
 
-// Pop returns and deletes the first n keys from a bucket
+// HasKey checks whether a key exists, or not, in a bucket
+func (c *Connection) HasKey(bucket string, key string) (doesHaveKey bool, err error) {
+	doesHaveKey = false
+	resp, err := http.Get(fmt.Sprintf("%s/v1/db/%s/bucket/%s/haskey/%s", c.Address, c.DBName, bucket, key))
+	if err != nil {
+		return doesHaveKey, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&doesHaveKey)
+	return doesHaveKey, err
+}
+
+// Move moves a list of keys from one bucket to another. This function will
+// create the second bucket if it does not exist.
 func (c *Connection) Move(bucket string, bucket2 string, keys []string) (err error) {
 	type QueryJSON struct {
 		FromBucket string   `json:"from_bucket"`

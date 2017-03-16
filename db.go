@@ -282,3 +282,29 @@ func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) e
 		return nil
 	})
 }
+
+func hasKey(dbname string, bucket string, key string) (doesHaveKey bool, err error) {
+	doesHaveKey = false
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return doesHaveKey, err
+	}
+
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	if err != nil {
+		return doesHaveKey, err
+	}
+	defer db.Close()
+
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		if b == nil {
+			return errors.New("Bucket does not exist")
+		}
+		v := b.Get([]byte(key))
+		if v != nil {
+			doesHaveKey = true
+		}
+		return nil
+	})
+	return doesHaveKey, err
+}

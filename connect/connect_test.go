@@ -45,6 +45,14 @@ func BenchmarkGetTwo(b *testing.B) {
 	}
 }
 
+func BenchmarkHasKey(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.HasKey("benchkeys", "key1")
+	}
+}
+
 func TestGeneral(t *testing.T) {
 	// Test opening DB that doesnt exist
 	conn, err := Open("http://asdkfjalsjdflkasjdf", "testdb")
@@ -67,6 +75,22 @@ func TestGeneral(t *testing.T) {
 	}
 	if _, err := os.Stat(path.Join("..", "dbs", "testdb.db")); os.IsNotExist(err) {
 		t.Errorf("Problem creating directory")
+	}
+
+	// Test HasKey
+	hasKey, err := conn.HasKey("people_locations", "zack")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if hasKey == false {
+		t.Errorf("Incorrectly checking whether key exists")
+	}
+	hasKey, err = conn.HasKey("people_locations", "askjdflasjdlkfj")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if hasKey != false {
+		t.Errorf("Incorrectly checking whether key exists")
 	}
 
 	data2, err := conn.GetAll("people_locations")

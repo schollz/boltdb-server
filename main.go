@@ -48,6 +48,7 @@ func main() {
 	r.GET("/v1/db/:dbname/bucket/:bucket/some", handleGet)           // Get all keys and values specified by ?keys=key1,key2 or by JSON
 	r.GET("/v1/db/:dbname/bucket/:bucket/pop", handlePop)            // Delete and return first n keys + values, where n specified by ?n=100
 	r.GET("/v1/db/:dbname/bucket/:bucket/keys", handleGetKeys)       // Get all keys in a bucket (no parameters)
+	r.GET("/v1/db/:dbname/bucket/:bucket/haskey/:key", handleHasKey) // Return boolean of whether it has key
 	// r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
 	//
 	r.DELETE("/v1/db/:dbname", handleDeleteDatabase)                 // Delete database file (no parameters)
@@ -59,6 +60,18 @@ func main() {
 
 	log.Printf("Listening on 0.0.0.0:%s\n", port)
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
+}
+
+func handleHasKey(c *gin.Context) {
+	dbname := c.Param("dbname")
+	bucket := c.Param("bucket")
+	key := c.Param("key")
+	doesHaveKey, err := hasKey(dbname, bucket, key)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, doesHaveKey)
 }
 
 func handleGetDBStats(c *gin.Context) {

@@ -4,7 +4,7 @@
     width="240" height="78" border="0" alt="BoltDB Server">
 <br>
 <a href="https://travis-ci.org/schollz/boltdb-server"><img src="https://img.shields.io/travis/schollz/boltdb-server.svg?style=flat-square" alt="Build Status"></a>
-<a href="http://gocover.io/github.com/schollz/boltdb-server/connect"><img src="https://img.shields.io/badge/coverage-65%25-yellow.svg?style=flat-square" alt="Code Coverage"></a>
+<a href="http://gocover.io/github.com/schollz/boltdb-server/connect"><img src="https://img.shields.io/badge/coverage-67%25-yellow.svg?style=flat-square" alt="Code Coverage"></a>
 <a href="https://godoc.org/github.com/schollz/boltdb-server/connect"><img src="https://img.shields.io/badge/api-reference-blue.svg?style=flat-square" alt="GoDoc"></a>
 </p>
 
