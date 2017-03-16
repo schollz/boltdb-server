@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 
@@ -124,7 +123,11 @@ func init() {
 	os.Mkdir("dbs", 0644)
 }
 
-func deleteFromDatabase(dbname string, bucket string, keys map[string]string) error {
+func deleteDatabase(dbname string) error {
+	return os.Remove(path.Join("dbs", dbname+".db"))
+}
+
+func deleteKeys(dbname string, bucket string, keys []string) error {
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
 		return err
@@ -136,10 +139,22 @@ func deleteFromDatabase(dbname string, bucket string, keys map[string]string) er
 		if b == nil {
 			return errors.New("Bucket does not exist")
 		}
-		for key := range keys {
+		for _, key := range keys {
 			b.Delete([]byte(key))
 		}
 		return err
+	})
+}
+
+func deleteBucket(dbname string, bucket string) error {
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return db.Update(func(tx *bolt.Tx) error {
+		return tx.DeleteBucket([]byte(bucket))
 	})
 }
 
@@ -171,32 +186,26 @@ func pop(dbname string, bucket string, n int) (map[string]string, error) {
 	return keystore, err
 }
 
-func moveKeys(dbname string, bucket1 string, bucket2 string, keys map[string]string) (string, bool) {
+func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) error {
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
 	if err != nil {
-		return fmt.Sprintf("Error: '%s'", err.Error()), false
+		return err
 	}
 	defer db.Close()
 
-	numMovedKeys := 0
-	err = db.Update(func(tx *bolt.Tx) error {
+	return db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket1))
 		if b == nil {
 			return errors.New("Bucket does not exist")
 		}
 		b2, _ := tx.CreateBucketIfNotExists([]byte(bucket2))
-		for key := range keys {
+		for _, key := range keys {
 			val := b.Get([]byte(key))
 			if val != nil {
-				numMovedKeys++
 				b.Delete([]byte(key))
 				b2.Put([]byte(key), val)
 			}
 		}
 		return nil
 	})
-	if err != nil {
-		return fmt.Sprintf("Error: '%s'", err.Error()), false
-	}
-	return fmt.Sprintf("Moved %d keys from %s to %s", numMovedKeys, bucket1, bucket2), true
 }

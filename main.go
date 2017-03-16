@@ -29,16 +29,52 @@ func main() {
 	r.GET("/v1/db/:dbname/bucket/:bucket/keys", handleGetKeys) // Get all keys in a bucket (no parameters)
 	// r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
 	//
-	// r.DELETE("/v1/db/:dbname", deleteDB)                         // Delete database file (no parameters)
-	// r.DELETE("/v1/db/:dbname/bucket/:bucket", deleteBucket)      // Delete bucket (no parameters)
-	// r.DELETE("/v1/db/:dbname/bucket/:bucket/keys", deleteBucket) // Delete keys, where keys are specified by JSON []string
+	r.DELETE("/v1/db/:dbname", handleDeleteDatabase)                 // Delete database file (no parameters)
+	r.DELETE("/v1/db/:dbname/bucket/:bucket", handleDeleteBucket)    // Delete bucket (no parameters)
+	r.DELETE("/v1/db/:dbname/bucket/:bucket/keys", handleDeleteKeys) // Delete keys, where keys are specified by JSON []string
 	//
 	r.POST("/v1/db/:dbname/bucket/:bucket/update", handleUpdate) // Updates a database with keystore specified by JSON
-
-	// r.PUT("/v1/db/:dbname/move", handleRequests) // Move keys, with buckets and keys specified by JSON
+	r.POST("/v1/db/:dbname/move", handleMove)                    // Move keys, with buckets and keys specified by JSON
 
 	log.Printf("Listening on 0.0.0.0:%s\n", port)
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
+}
+
+func handleDeleteDatabase(c *gin.Context) {
+	dbname := c.Param("dbname")
+	err := deleteDatabase(dbname)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.String(http.StatusOK, "Deleted database")
+}
+
+func handleDeleteBucket(c *gin.Context) {
+	dbname := c.Param("dbname")
+	bucket := c.Param("bucket")
+	err := deleteBucket(dbname, bucket)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.String(http.StatusOK, "Deleted bucket")
+}
+
+func handleDeleteKeys(c *gin.Context) {
+	dbname := c.Param("dbname")
+	bucket := c.Param("bucket")
+	var keys []string
+	if c.BindJSON(&keys) != nil {
+		c.String(http.StatusBadRequest, "Problem binding keys")
+		return
+	}
+	err := deleteKeys(dbname, bucket, keys)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.String(http.StatusOK, "Deleted keys")
 }
 
 func handleUpdate(c *gin.Context) {
@@ -110,4 +146,25 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, keystore)
+}
+
+func handleMove(c *gin.Context) {
+	dbname := c.Param("dbname")
+	type QueryJSON struct {
+		FromBucket string   `json:"from_bucket"`
+		ToBucket   string   `json:"to_bucket"`
+		Keys       []string `json:"keys"`
+	}
+	var json QueryJSON
+	if c.BindJSON(&json) != nil {
+		c.String(http.StatusBadRequest, "Must provide keys, from_bucket and to_bucket")
+		return
+	}
+	// Get keys and values
+	err := moveBuckets(dbname, json.FromBucket, json.ToBucket, json.Keys)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, fmt.Sprintf("Moved keys"))
 }
