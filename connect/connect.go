@@ -3,6 +3,7 @@ package connect
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -17,6 +18,11 @@ func Open(address, dbname string) (*Connection, error) {
 	c := new(Connection)
 	c.Address = address
 	c.DBName = dbname
+	resp, err := http.Get(c.Address + "/v1/uptime")
+	if err != nil {
+		return c, err
+	}
+	defer resp.Body.Close()
 	return c, nil
 }
 
@@ -96,8 +102,49 @@ func (c *Connection) GetKeys(bucket string) ([]string, error) {
 
 	var target []string
 	err = json.NewDecoder(resp.Body).Decode(&target)
+	return target, err
+}
+
+// Pop returns and deletes the first n keys from a bucket
+func (c *Connection) Pop(bucket string, n int) (keystore map[string]string, err error) {
+	resp, err := http.Get(fmt.Sprintf("%s/v1/db/%s/bucket/%s/pop?n=%d", c.Address, c.DBName, bucket, n))
 	if err != nil {
-		return []string{}, err
+		return keystore, err
 	}
-	return target, nil
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&keystore)
+	return keystore, err
+}
+
+// Pop returns and deletes the first n keys from a bucket
+func (c *Connection) Move(bucket string, bucket2 string, keys []string) (err error) {
+	type QueryJSON struct {
+		FromBucket string   `json:"from_bucket"`
+		ToBucket   string   `json:"to_bucket"`
+		Keys       []string `json:"keys"`
+	}
+	moveJSON := new(QueryJSON)
+	moveJSON.FromBucket = bucket
+	moveJSON.ToBucket = bucket2
+	moveJSON.Keys = keys
+
+	payloadBytes, err := json.Marshal(moveJSON)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(payloadBytes)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/db/%s/move", c.Address, c.DBName), body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
 }

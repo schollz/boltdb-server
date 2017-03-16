@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,12 +22,23 @@ func main() {
 	flag.BoolVar(&gzipOn, "gzip", true, "use compression")
 	flag.StringVar(&port, "port", "8080", "port to use for server")
 	flag.Parse()
+
+	startTime := time.Now()
+
 	r := gin.Default()
 
-	r.GET("/v1/db/:dbname/bucket/:bucket/all", handleGet)      // Get all keys and values from a bucket (no parameters)
-	r.GET("/v1/db/:dbname/bucket/:bucket/some", handleGet)     // Get all keys and values specified by ?keys=key1,key2 or by JSON
-	r.GET("/v1/db/:dbname/bucket/:bucket/pop", handlePop)      // Delete and return first n keys + values, where n specified by ?n=100
-	r.GET("/v1/db/:dbname/bucket/:bucket/keys", handleGetKeys) // Get all keys in a bucket (no parameters)
+	r.GET("/v1/uptime", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"uptime": time.Since(startTime).String(),
+		})
+	})
+	r.GET("/v1/db/:dbname/stats", handleGetDBStats)                  // Get map of buckets and the number of keys in each
+	r.GET("/v1/db/:dbname/buckets", handleGetBuckets)                // Get list of all buckets
+	r.GET("/v1/db/:dbname/bucket/:bucket/numkeys", handleGetNumKeys) // Get all keys and values from a bucket (no parameters)
+	r.GET("/v1/db/:dbname/bucket/:bucket/all", handleGet)            // Get all keys and values from a bucket (no parameters)
+	r.GET("/v1/db/:dbname/bucket/:bucket/some", handleGet)           // Get all keys and values specified by ?keys=key1,key2 or by JSON
+	r.GET("/v1/db/:dbname/bucket/:bucket/pop", handlePop)            // Delete and return first n keys + values, where n specified by ?n=100
+	r.GET("/v1/db/:dbname/bucket/:bucket/keys", handleGetKeys)       // Get all keys in a bucket (no parameters)
 	// r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
 	//
 	r.DELETE("/v1/db/:dbname", handleDeleteDatabase)                 // Delete database file (no parameters)
@@ -38,6 +50,45 @@ func main() {
 
 	log.Printf("Listening on 0.0.0.0:%s\n", port)
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
+}
+
+func handleGetDBStats(c *gin.Context) {
+	dbname := c.Param("dbname")
+	bucketNames, err := getBucketNames(dbname)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	stats := make(map[string]int)
+	for _, bucket := range bucketNames {
+		stats[bucket], err = getNumberKeysInBucket(dbname, bucket)
+		if err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	c.JSON(http.StatusOK, stats)
+}
+
+func handleGetNumKeys(c *gin.Context) {
+	dbname := c.Param("dbname")
+	bucket := c.Param("bucket")
+	n, err := getNumberKeysInBucket(dbname, bucket)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, n)
+}
+
+func handleGetBuckets(c *gin.Context) {
+	dbname := c.Param("dbname")
+	bucketNames, err := getBucketNames(dbname)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, bucketNames)
 }
 
 func handleDeleteDatabase(c *gin.Context) {

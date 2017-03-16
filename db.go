@@ -8,6 +8,52 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+func getNumberKeysInBucket(dbname string, bucket string) (n int, err error) {
+	n = 0
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return n, err
+	}
+
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	if err != nil {
+		return n, err
+	}
+	defer db.Close()
+
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		if b == nil {
+			return errors.New("Bucket does not exist")
+		}
+		c := b.Cursor()
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			n++
+		}
+		return nil
+	})
+	return n, err
+}
+
+func getBucketNames(dbname string) (bucketNames []string, err error) {
+	if _, err = os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return bucketNames, err
+	}
+
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	if err != nil {
+		return bucketNames, err
+	}
+	defer db.Close()
+
+	err = db.View(func(tx *bolt.Tx) error {
+		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
+			bucketNames = append(bucketNames, string(name))
+			return nil
+		})
+	})
+	return bucketNames, err
+}
+
 // updateDatabase
 func updateDatabase(dbname string, bucket string, keystore map[string]string) error {
 	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
