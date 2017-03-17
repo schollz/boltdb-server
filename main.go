@@ -62,6 +62,7 @@ func main() {
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
 }
 
+// TODO: MAKE IT USE MULTIPLE BUCKETS AND MULTIPLE KEYS!
 func handleHasKey(c *gin.Context) {
 	dbname := c.Param("dbname")
 	bucket := c.Param("bucket")
