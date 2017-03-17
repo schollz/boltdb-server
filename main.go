@@ -49,6 +49,7 @@ func main() {
 	r.GET("/v1/db/:dbname/bucket/:bucket/pop", handlePop)            // Delete and return first n keys + values, where n specified by ?n=100
 	r.GET("/v1/db/:dbname/bucket/:bucket/keys", handleGetKeys)       // Get all keys in a bucket (no parameters)
 	r.GET("/v1/db/:dbname/bucket/:bucket/haskey/:key", handleHasKey) // Return boolean of whether it has key
+	r.GET("/v1/db/:dbname/haskeys", handleHasKeys)                   // Return boolean of whether any of the buckets contain the keys
 	// r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
 	//
 	r.DELETE("/v1/db/:dbname", handleDeleteDatabase)                 // Delete database file (no parameters)
@@ -62,7 +63,27 @@ func main() {
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
 }
 
-// TODO: MAKE IT USE MULTIPLE BUCKETS AND MULTIPLE KEYS!
+func handleHasKeys(c *gin.Context) {
+	dbname := c.Param("dbname")
+
+	type QueryJSON struct {
+		Keys    []string `json:"keys"`
+		Buckets []string `json:"buckets"`
+	}
+	var json QueryJSON
+	if c.BindJSON(&json) != nil {
+		c.String(http.StatusBadRequest, "Problem binding keys")
+		return
+	}
+
+	doesHaveKeyMap, err := hasKeys(dbname, json.Buckets, json.Keys)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, doesHaveKeyMap)
+}
+
 func handleHasKey(c *gin.Context) {
 	dbname := c.Param("dbname")
 	bucket := c.Param("bucket")
@@ -74,7 +95,6 @@ func handleHasKey(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, doesHaveKey)
 }
-
 func handleGetDBStats(c *gin.Context) {
 	dbname := c.Param("dbname")
 	bucketNames, err := getBucketNames(dbname)

@@ -283,6 +283,41 @@ func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) e
 	})
 }
 
+func hasKeys(dbname string, buckets []string, keys []string) (doesHaveKeyMap map[string]bool, err error) {
+	doesHaveKeyMap = make(map[string]bool)
+
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return doesHaveKeyMap, err
+	}
+
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	if err != nil {
+		return doesHaveKeyMap, err
+	}
+	defer db.Close()
+
+	for _, key := range keys {
+		doesHaveKeyMap[key] = false
+	}
+
+	err = db.View(func(tx *bolt.Tx) error {
+		for _, bucket := range buckets {
+			b := tx.Bucket([]byte(bucket))
+			if b == nil {
+				continue
+			}
+			for _, key := range keys {
+				v := b.Get([]byte(key))
+				if v != nil {
+					doesHaveKeyMap[string(v)] = true
+				}
+			}
+		}
+		return nil
+	})
+	return doesHaveKeyMap, err
+}
+
 func hasKey(dbname string, bucket string, key string) (doesHaveKey bool, err error) {
 	doesHaveKey = false
 	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
