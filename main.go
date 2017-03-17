@@ -158,7 +158,6 @@ func handleUpdate(c *gin.Context) {
 		c.String(http.StatusBadRequest, "Problem binding keystore")
 		return
 	}
-	fmt.Println(json)
 	err := updateDatabase(dbname, bucket, json)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())

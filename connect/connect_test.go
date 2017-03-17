@@ -12,7 +12,8 @@ import (
 // go build; .\boltdb-server.exe
 var testingServer = "http://localhost:8080"
 
-func BenchmarkPost(b *testing.B) {
+func BenchmarkPostOne(b *testing.B) {
+	os.Remove(path.Join("..", "dbs", "testbench.db"))
 	conn, _ := Open(testingServer, "testbench")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -21,19 +22,59 @@ func BenchmarkPost(b *testing.B) {
 	}
 }
 
+func BenchmarkGetAll1(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.GetAll("benchkeys")
+	}
+}
+
+func BenchmarkPost1000(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	m := make(map[string]string)
+	for i := 0; i < 1000; i++ {
+		m["key"+strconv.Itoa(i)] = "value" + strconv.Itoa(i)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.Post("benchkeys", m)
+	}
+}
+
+func BenchmarkGetAll1000(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.GetAll("benchkeys")
+	}
+}
+
+func BenchmarkPost100000(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	m := make(map[string]string)
+	for i := 0; i < 100000; i++ {
+		m["key"+strconv.Itoa(i)] = "value" + strconv.Itoa(i)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.Post("benchkeys", m)
+	}
+}
+
+func BenchmarkGetAll100000(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.GetAll("benchkeys")
+	}
+}
+
 func BenchmarkGetKeys(b *testing.B) {
 	conn, _ := Open(testingServer, "testbench")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		conn.GetKeys("benchkeys")
-	}
-}
-
-func BenchmarkGetAll(b *testing.B) {
-	conn, _ := Open(testingServer, "testbench")
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		conn.GetAll("benchkeys")
 	}
 }
 
