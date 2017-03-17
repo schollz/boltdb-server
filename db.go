@@ -309,7 +309,7 @@ func hasKeys(dbname string, buckets []string, keys []string) (doesHaveKeyMap map
 			for _, key := range keys {
 				v := b.Get([]byte(key))
 				if v != nil {
-					doesHaveKeyMap[string(v)] = true
+					doesHaveKeyMap[string(key)] = true
 				}
 			}
 		}
