@@ -136,7 +136,7 @@ func updateDatabase(dbname string, bucket string, keystore map[string]string) er
 	})
 }
 
-func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
+func getKeysFromDatabase(dbname string, bucket string) (keys []string, err error) {
 	db, err := getDB(dbname)
 	if err != nil {
 		return []string{}, err
@@ -153,32 +153,17 @@ func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
 			numKeys++
 		}
-		return nil
-	})
-	if err != nil {
-		return []string{}, err
-	}
 
-	keys := make([]string, numKeys)
-	numKeys = 0
-	err = db.View(func(tx *bolt.Tx) error {
-		// Assume bucket exists and has keys
-		b := tx.Bucket([]byte(bucket))
-		if b == nil {
-			return errors.New("Bucket does not exist")
-		}
-		c := b.Cursor()
+		keys = make([]string, numKeys)
+		numKeys = 0
+		c = b.Cursor()
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
 			keys[numKeys] = string(k)
 			numKeys++
 		}
 		return nil
 	})
-	if err != nil {
-		return []string{}, err
-	}
-
-	return keys, err
+	return
 }
 
 func getFromDatabase(dbname string, bucket string, keys []string) (map[string]string, error) {
