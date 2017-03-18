@@ -70,6 +70,14 @@ func BenchmarkGetAll100000(b *testing.B) {
 	}
 }
 
+func BenchmarkGetStats100000(b *testing.B) {
+	conn, _ := Open(testingServer, "testbench")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		conn.Stats()
+	}
+}
+
 func BenchmarkGetKeys(b *testing.B) {
 	conn, _ := Open(testingServer, "testbench")
 	b.ResetTimer()
@@ -218,6 +226,15 @@ func TestGeneral(t *testing.T) {
 	_, err = conn.GetKeys("asldkfjaslkdjf")
 	if err == nil {
 		t.Errorf("Should throw error, bucket does not exist")
+	}
+
+	// Test getting stats
+	stats, err := conn.Stats()
+	if err != nil {
+		t.Error(err)
+	}
+	if stats["people_locations3"] != 4 {
+		t.Errorf("Problem with getting stats: %v", stats)
 	}
 
 	// Test deleting database

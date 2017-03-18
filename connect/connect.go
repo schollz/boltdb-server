@@ -242,3 +242,15 @@ func (c *Connection) Move(bucket string, bucket2 string, keys []string) (err err
 	defer resp.Body.Close()
 	return nil
 }
+
+// Stats returns a list of buckets and number of keys in each
+func (c *Connection) Stats() (stats map[string]int, err error) {
+	resp, err := http.Get(fmt.Sprintf("%s/v1/db/%s/stats", c.Address, c.DBName))
+	if err != nil {
+		return stats, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&stats)
+	return stats, err
+}
