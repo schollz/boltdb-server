@@ -140,6 +140,39 @@ func (c *Connection) HasKey(bucket string, key string) (doesHaveKey bool, err er
 	return doesHaveKey, err
 }
 
+// HasKeys checks whether any of the specified keys exist in any buckets.
+// Returns a map of the keys and a boolean of whether they are found.
+func (c *Connection) HasKeys(buckets []string, keys []string) (doesHaveKeyMap map[string]bool, err error) {
+	type QueryJSON struct {
+		Buckets []string `json:"buckets"`
+		Keys    []string `json:"keys"`
+	}
+	payloadJSON := new(QueryJSON)
+	payloadJSON.Buckets = buckets
+	payloadJSON.Keys = keys
+
+	payloadBytes, err := json.Marshal(payloadJSON)
+	if err != nil {
+		return doesHaveKeyMap, err
+	}
+	body := bytes.NewReader(payloadBytes)
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/db/%s/haskeys", c.Address, c.DBName), body)
+	if err != nil {
+		return doesHaveKeyMap, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return doesHaveKeyMap, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&doesHaveKeyMap)
+	return doesHaveKeyMap, err
+}
+
 // Move moves a list of keys from one bucket to another. This function will
 // create the second bucket if it does not exist.
 func (c *Connection) Move(bucket string, bucket2 string, keys []string) (err error) {

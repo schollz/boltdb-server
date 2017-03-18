@@ -14,7 +14,7 @@ func getNumberKeysInBucket(dbname string, bucket string) (n int, err error) {
 		return n, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return n, err
 	}
@@ -39,7 +39,7 @@ func getBucketNames(dbname string) (bucketNames []string, err error) {
 		return bucketNames, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return bucketNames, err
 	}
@@ -56,7 +56,7 @@ func getBucketNames(dbname string) (bucketNames []string, err error) {
 
 // updateDatabase
 func updateDatabase(dbname string, bucket string, keystore map[string]string) error {
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
 		return []string{}, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return []string{}, err
 	}
@@ -134,7 +134,7 @@ func getFromDatabase(dbname string, bucket string, keys []string) (map[string]st
 		return keystore, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return keystore, err
 	}
@@ -174,7 +174,7 @@ func getFromDatabase(dbname string, bucket string, keys []string) (map[string]st
 }
 
 func init() {
-	os.Mkdir("dbs", 0644)
+	os.Mkdir("dbs", 0755)
 }
 
 func deleteDatabase(dbname string) error {
@@ -189,7 +189,7 @@ func deleteKeys(dbname string, bucket string, keys []string) error {
 		return err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func deleteBucket(dbname string, bucket string) error {
 		return err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func pop(dbname string, bucket string, n int) (map[string]string, error) {
 		return keystore, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return keystore, err
 	}
@@ -260,7 +260,7 @@ func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) e
 		return err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -283,13 +283,48 @@ func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) e
 	})
 }
 
+func hasKeys(dbname string, buckets []string, keys []string) (doesHaveKeyMap map[string]bool, err error) {
+	doesHaveKeyMap = make(map[string]bool)
+
+	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+		return doesHaveKeyMap, err
+	}
+
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	if err != nil {
+		return doesHaveKeyMap, err
+	}
+	defer db.Close()
+
+	for _, key := range keys {
+		doesHaveKeyMap[key] = false
+	}
+
+	err = db.View(func(tx *bolt.Tx) error {
+		for _, bucket := range buckets {
+			b := tx.Bucket([]byte(bucket))
+			if b == nil {
+				continue
+			}
+			for _, key := range keys {
+				v := b.Get([]byte(key))
+				if v != nil {
+					doesHaveKeyMap[string(key)] = true
+				}
+			}
+		}
+		return nil
+	})
+	return doesHaveKeyMap, err
+}
+
 func hasKey(dbname string, bucket string, key string) (doesHaveKey bool, err error) {
 	doesHaveKey = false
 	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
 		return doesHaveKey, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0600, nil)
+	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
 	if err != nil {
 		return doesHaveKey, err
 	}

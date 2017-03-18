@@ -118,6 +118,18 @@ func TestGeneral(t *testing.T) {
 		t.Errorf("Problem creating directory")
 	}
 
+	// Test HasKeys
+	data["bob"] = "brazil"
+	data["jill"] = "antarctica"
+	err = conn.Post("people_locations3", data)
+	hasKeysMap, err := conn.HasKeys([]string{"people_locations", "people_locations3"}, []string{"zack", "jessie", "bob", "jim"})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if hasKeysMap["jim"] != false || hasKeysMap["bob"] != true || len(hasKeysMap) != 4 {
+		t.Errorf("Problem checking whether buckets have keys")
+	}
+
 	// Test HasKey
 	hasKey, err := conn.HasKey("people_locations", "zack")
 	if err != nil {
