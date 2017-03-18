@@ -107,7 +107,7 @@ func TestGeneral(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	err = CreateBuckets([]string{"people_locations"})
+	err = conn.CreateBuckets([]string{"people_locations"})
 	if err != nil {
 		t.Errorf(err.Error())
 	}
