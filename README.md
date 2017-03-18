@@ -1,7 +1,7 @@
 <p align="center">
 <img
-    src="logo.png"
-    width="240" height="78" border="0" alt="BoltDB Server">
+src="logo.png"
+width="260" height="80" border="0" alt="BoltDB Server">
 <br>
 <a href="https://travis-ci.org/schollz/boltdb-server"><img src="https://img.shields.io/travis/schollz/boltdb-server.svg?style=flat-square" alt="Build Status"></a>
 <a href="http://gocover.io/github.com/schollz/boltdb-server/connect"><img src="https://img.shields.io/badge/coverage-67%25-yellow.svg?style=flat-square" alt="Code Coverage"></a>
@@ -10,14 +10,15 @@
 
 <p align="center">A fancy server for Bolt databases</a></p>
 
-BoltDB is a great utility for pure-Go keystore databases. This is a server and package (`connect`) for interfacing
-with it.
+*boltdb-server* is a server and package (`connect`) for interfacing
+with [boltdb/bolt](https://github.com/boltdb/bolt), a pure-Go embedded key/value database. 
 
 Features
 ========
 
 - Automatic compression of values
 - Simple API for getting, setting, moving, popping and deleting BoltDB data
+- Package for adding to your Go programs
 
 Getting Started
 ===============
@@ -40,58 +41,53 @@ Run the server using
 $GOPATH/bin/boltdb-server
 ```
 
-Then you can use the server directly (see API below) or plug in a Go program using the connect package (see tests).
+Then you can use the server directly (see API below) or plug in a Go program using the connect package, [see tests for more info](https://github.com/schollz/boltdb-server/blob/master/connect/connect_test.go).
 
 ## API
 
-### `GET /v1/db/<dbname>/bucket/<bucket>/all`
-
-Returns all the keys and values for the specified bucket and database.
-Response:
-
-```json
-{
-  "key1":"value1",
-  "key2":"value2",
-  "key3":"value3"
-}
 ```
+// Get map of buckets and the number of keys in each
+GET /v1/db/<db>/stats
 
-### `GET /v1/db/<dbname>/bucket/<bucket>/some?keys=key1,key2`
+// Get list of all buckets 
+GET /v1/db/<db>/buckets
 
-Returns all keys and values for the specified bucket and database and specified keys
-Response:
+// Get all keys and values from a bucket
+GET /v1/db/<db>/bucket/<bucket>/numkeys
 
-```json
-{
-  "key1":"value1",
-  "key2":"value2"
-}
+// Get all keys and values from a bucket
+GET /v1/db/<db>/bucket/<bucket>/all
+
+// Get all keys and values specified by ?keys=key1,key2 or by JSON
+GET /v1/db/<db>/bucket/<bucket>/some
+
+// Delete and return first n keys
+GET /v1/db/<db>/bucket/<bucket>/pop?n=X
+
+// Get all keys in a bucket
+GET /v1/db/<db>/bucket/<bucket>/keys", handleGetKeys) 
+
+// Return boolean of whether it has key
+GET /v1/db/<db>/bucket/<bucket>/haskey/<key>
+
+// Return boolean of whether any buckets contain any keys specified by JSON
+GET /v1/db/<db>/haskeys
+
+// Delete database file
+DELETE /v1/db/<db>
+
+// Delete bucket
+DELETE /v1/db/<db>/bucket/<bucket>
+
+// Delete keys, where keys are specified by JSON []string
+DELETE /v1/db/<db>/bucket/<bucket>/keys
+
+// Updates a database with keystore specified by JSON
+POST /v1/db/<db>/bucket/<bucket>/update
+
+// Move keys, with buckets and keys specified by JSON
+POST /v1/db/<db>/move
+
+// Create buckets specified by JSON
+POST /v1/db/<db>/create
 ```
-
-### `GET /v1/db/<dbname>/bucket/<bucket>/pop?n=2`
-
-Returns first *n* keys and values for the specified bucket and database, and **deletes them from the bucket**.
-Response:
-
-```json
-{
-  "key1":"value1",
-  "key2":"value2"
-}
-```
-### `GET /v1/db/<dbname>/bucket/<bucket>/keys`
-
-Returns a list of all keys in the specified bucket and database.
-
-Response:
-
-```json
-{
-  "keys":["key1","key2","key3"]
-}
-```
-
-
-
-## Performance
