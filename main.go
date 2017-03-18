@@ -23,7 +23,7 @@ var log *lumber.ConsoleLogger
 
 func main() {
 	flag.BoolVar(&verbose, "verbose", false, "verbosity")
-	flag.BoolVar(&compressOn, "compress", true, "use compression")
+	flag.BoolVar(&compressOn, "compress", false, "use compression")
 	flag.StringVar(&dbpath, "db", path.Join(".", "dbs"), "path to the database")
 	flag.StringVar(&port, "port", "8080", "port to listen on")
 	flag.Parse()
