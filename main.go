@@ -73,7 +73,7 @@ func main() {
 	r.POST("/v1/db/:dbname/move", handleMove)                    // Move keys, with buckets and keys specified by JSON
 	r.POST("/v1/db/:dbname/create", handleCreateDB)              // Move keys, with buckets and keys specified by JSON
 
-	log.Info("Listening on 0.0.0.0:%s\n", port)
+	fmt.Printf("Listening on 0.0.0.0:%s\n", port)
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
 }
 
