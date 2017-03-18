@@ -12,7 +12,7 @@ import (
 // go build; .\boltdb-server.exe
 var testingServer = "http://localhost:8080"
 
-func BenchmarkPostOne(b *testing.B) {
+func BenchmarkPost1(b *testing.B) {
 	os.Remove(path.Join("..", "dbs", "testbench.db"))
 	conn, _ := Open(testingServer, "testbench")
 	b.ResetTimer()
@@ -107,6 +107,11 @@ func TestGeneral(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
+	err = CreateBuckets([]string{"people_locations"})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	data := make(map[string]string)
 	data["zack"] = "canada"
 	data["jessie"] = "usa"
@@ -152,7 +157,7 @@ func TestGeneral(t *testing.T) {
 	}
 	if val, ok := data2["zack"]; ok {
 		if val != "canada" {
-			t.Errorf("Could not get zack back")
+			t.Errorf("Could not get zack back: %v", val)
 		}
 	} else {
 		t.Errorf("Problem with GetAll: %v", data2)
@@ -213,6 +218,12 @@ func TestGeneral(t *testing.T) {
 	_, err = conn.GetKeys("asldkfjaslkdjf")
 	if err == nil {
 		t.Errorf("Should throw error, bucket does not exist")
+	}
+
+	// Test deleting database
+	err = conn.DeleteDatabase()
+	if err != nil {
+		t.Error(err)
 	}
 
 }

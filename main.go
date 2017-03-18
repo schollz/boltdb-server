@@ -3,25 +3,38 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jcelliott/lumber"
 )
 
 // Testing
 // curl -H "Content-Type: application/json" -X POST -d '{"bucket":"food","keystore":{"username":"xyz","password":"xyz"}}' 'http://zack:123@localhost:8080/'
 
-var port string
-var gzipOn bool
+var port, dbpath string
+var compressOn, verbose bool
+var log *lumber.ConsoleLogger
 
 func main() {
-	flag.BoolVar(&gzipOn, "gzip", true, "use compression")
-	flag.StringVar(&port, "port", "8080", "port to use for server")
+	flag.BoolVar(&verbose, "verbose", false, "verbosity")
+	flag.BoolVar(&compressOn, "compress", true, "use compression")
+	flag.StringVar(&dbpath, "db", path.Join(".", "dbs"), "path to the database")
+	flag.StringVar(&port, "port", "8080", "port to listen on")
 	flag.Parse()
+
+	os.MkdirAll(dbpath, 0755)
+
+	if verbose {
+		log = lumber.NewConsoleLogger(lumber.TRACE)
+	} else {
+		log = lumber.NewConsoleLogger(lumber.WARN)
+	}
 
 	startTime := time.Now()
 
@@ -50,16 +63,17 @@ func main() {
 	r.GET("/v1/db/:dbname/bucket/:bucket/keys", handleGetKeys)       // Get all keys in a bucket (no parameters)
 	r.GET("/v1/db/:dbname/bucket/:bucket/haskey/:key", handleHasKey) // Return boolean of whether it has key
 	r.GET("/v1/db/:dbname/haskeys", handleHasKeys)                   // Return boolean of whether any of the buckets contain the keys
-	// r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
-	//
+	// TODO: r.GET("/v1/db/:dbname/bucket/:bucket/data", getDataArchive)   // Creates archive with keys as filenames and values as contents, returns archive
+
 	r.DELETE("/v1/db/:dbname", handleDeleteDatabase)                 // Delete database file (no parameters)
 	r.DELETE("/v1/db/:dbname/bucket/:bucket", handleDeleteBucket)    // Delete bucket (no parameters)
 	r.DELETE("/v1/db/:dbname/bucket/:bucket/keys", handleDeleteKeys) // Delete keys, where keys are specified by JSON []string
 	//
 	r.POST("/v1/db/:dbname/bucket/:bucket/update", handleUpdate) // Updates a database with keystore specified by JSON
 	r.POST("/v1/db/:dbname/move", handleMove)                    // Move keys, with buckets and keys specified by JSON
+	r.POST("/v1/db/:dbname/create", handleCreateDB)              // Move keys, with buckets and keys specified by JSON
 
-	log.Printf("Listening on 0.0.0.0:%s\n", port)
+	log.Info("Listening on 0.0.0.0:%s\n", port)
 	r.Run(":" + port) // listen and serve on 0.0.0.0:8080
 }
 
@@ -82,6 +96,23 @@ func handleHasKeys(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, doesHaveKeyMap)
+}
+
+func handleCreateDB(c *gin.Context) {
+	dbname := c.Param("dbname")
+
+	var json []string
+	if c.BindJSON(&json) != nil {
+		c.String(http.StatusBadRequest, "Problem binding keys")
+		return
+	}
+
+	err := createDatabase(dbname, json)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, "Created db")
 }
 
 func handleHasKey(c *gin.Context) {
@@ -257,8 +288,10 @@ func handleMove(c *gin.Context) {
 	// Get keys and values
 	err := moveBuckets(dbname, json.FromBucket, json.ToBucket, json.Keys)
 	if err != nil {
+		log.Error("Could not move %v from %s to %s", json.Keys, json.FromBucket, json.ToBucket)
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	log.Trace("Moved %v from %s to %s", json.Keys, json.FromBucket, json.ToBucket)
 	c.JSON(http.StatusOK, fmt.Sprintf("Moved keys"))
 }

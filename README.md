@@ -1,6 +1,6 @@
 <p align="center">
-<img 
-    src="logo.png" 
+<img
+    src="logo.png"
     width="240" height="78" border="0" alt="BoltDB Server">
 <br>
 <a href="https://travis-ci.org/schollz/boltdb-server"><img src="https://img.shields.io/travis/schollz/boltdb-server.svg?style=flat-square" alt="Build Status"></a>
@@ -8,9 +8,16 @@
 <a href="https://godoc.org/github.com/schollz/boltdb-server/connect"><img src="https://img.shields.io/badge/api-reference-blue.svg?style=flat-square" alt="GoDoc"></a>
 </p>
 
-<p align="center">a simple server for BoltDB databases</a></p>
+<p align="center">A fancy server for Bolt databases</a></p>
 
-BoltDB is a great utility for pure-Go keystore databases. This is a server and connection utility for it.
+BoltDB is a great utility for pure-Go keystore databases. This is a server and package (`connect`) for interfacing
+with it.
+
+Features
+========
+
+- Automatic compression of values
+- Simple API for getting, setting, moving, popping and deleting BoltDB data
 
 Getting Started
 ===============
@@ -36,7 +43,7 @@ $GOPATH/bin/boltdb-server
 Then you can use the server directly (see API below) or plug in a Go program using the connect package (see tests).
 
 ## API
-        
+
 ### `GET /v1/db/<dbname>/bucket/<bucket>/all`
 
 Returns all the keys and values for the specified bucket and database.

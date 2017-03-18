@@ -36,6 +36,43 @@ func Open(address, dbname string) (*Connection, error) {
 	return c, nil
 }
 
+// DeleteDatabase deletes the database
+func (c *Connection) DeleteDatabase() error {
+	req, err := http.NewRequest("DELETE", c.Address+"/v1/db/"+c.DBName, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// CreateBuckets inserts some buckets into the DB
+func (c *Connection) CreateBuckets(buckets []string) error {
+	payloadBytes, err := json.Marshal(buckets)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(payloadBytes)
+
+	req, err := http.NewRequest("POST", c.Address+"/v1/db/"+c.DBName+"/create", body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 // Post keys and values to database
 func (c *Connection) Post(bucket string, keystore map[string]string) error {
 	payloadBytes, err := json.Marshal(keystore)

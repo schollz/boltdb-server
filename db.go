@@ -10,11 +10,11 @@ import (
 
 func getNumberKeysInBucket(dbname string, bucket string) (n int, err error) {
 	n = 0
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return n, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return n, err
 	}
@@ -31,15 +31,16 @@ func getNumberKeysInBucket(dbname string, bucket string) (n int, err error) {
 		}
 		return nil
 	})
+	log.Trace("Found %d keys in bucket '%s' in db '%s'", n, bucket, dbname)
 	return n, err
 }
 
 func getBucketNames(dbname string) (bucketNames []string, err error) {
-	if _, err = os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err = os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return bucketNames, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return bucketNames, err
 	}
@@ -54,9 +55,27 @@ func getBucketNames(dbname string) (bucketNames []string, err error) {
 	return bucketNames, err
 }
 
+func createDatabase(dbname string, buckets []string) error {
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return db.Update(func(tx *bolt.Tx) error {
+		for _, bucket := range buckets {
+			_, err2 := tx.CreateBucketIfNotExists([]byte(bucket))
+			if err2 != nil {
+				return err2
+			}
+		}
+		return nil
+	})
+}
+
 // updateDatabase
 func updateDatabase(dbname string, bucket string, keystore map[string]string) error {
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -68,7 +87,7 @@ func updateDatabase(dbname string, bucket string, keystore map[string]string) er
 			return err2
 		}
 		for key, value := range keystore {
-			err2 := b.Put([]byte(key), []byte(value))
+			err2 := b.Put([]byte(key), compressStringToByte(value))
 			if err2 != nil {
 				return err
 			}
@@ -78,11 +97,11 @@ func updateDatabase(dbname string, bucket string, keystore map[string]string) er
 }
 
 func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return []string{}, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return []string{}, err
 	}
@@ -130,11 +149,11 @@ func getKeysFromDatabase(dbname string, bucket string) ([]string, error) {
 func getFromDatabase(dbname string, bucket string, keys []string) (map[string]string, error) {
 	keystore := make(map[string]string)
 
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return keystore, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return keystore, err
 	}
@@ -150,7 +169,9 @@ func getFromDatabase(dbname string, bucket string, keys []string) (map[string]st
 			}
 			c := b.Cursor()
 			for k, v := c.First(); k != nil; k, v = c.Next() {
-				keystore[string(k)] = string(v)
+				if v != nil {
+					keystore[string(k)] = decompressByteToString(v)
+				}
 			}
 			return nil
 		})
@@ -164,7 +185,7 @@ func getFromDatabase(dbname string, bucket string, keys []string) (map[string]st
 			for _, key := range keys {
 				v := b.Get([]byte(key))
 				if v != nil {
-					keystore[key] = string(v)
+					keystore[key] = decompressByteToString(v)
 				}
 			}
 			return nil
@@ -173,23 +194,19 @@ func getFromDatabase(dbname string, bucket string, keys []string) (map[string]st
 	return keystore, err
 }
 
-func init() {
-	os.Mkdir("dbs", 0755)
-}
-
 func deleteDatabase(dbname string) error {
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return err
 	}
-	return os.Remove(path.Join("dbs", dbname+".db"))
+	return os.Remove(path.Join(dbpath, dbname+".db"))
 }
 
 func deleteKeys(dbname string, bucket string, keys []string) error {
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -208,11 +225,11 @@ func deleteKeys(dbname string, bucket string, keys []string) error {
 }
 
 func deleteBucket(dbname string, bucket string) error {
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -226,11 +243,11 @@ func deleteBucket(dbname string, bucket string) error {
 func pop(dbname string, bucket string, n int) (map[string]string, error) {
 	keystore := make(map[string]string)
 
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return keystore, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return keystore, err
 	}
@@ -245,7 +262,7 @@ func pop(dbname string, bucket string, n int) (map[string]string, error) {
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			b.Delete(k)
-			keystore[string(k)] = string(v)
+			keystore[string(k)] = decompressByteToString(v)
 			if len(keystore) == n {
 				break
 			}
@@ -256,11 +273,11 @@ func pop(dbname string, bucket string, n int) (map[string]string, error) {
 }
 
 func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) error {
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return err
 	}
@@ -277,6 +294,8 @@ func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) e
 			if val != nil {
 				b.Delete([]byte(key))
 				b2.Put([]byte(key), val)
+			} else {
+				return errors.New("Could not find key: " + key)
 			}
 		}
 		return nil
@@ -286,11 +305,11 @@ func moveBuckets(dbname string, bucket1 string, bucket2 string, keys []string) e
 func hasKeys(dbname string, buckets []string, keys []string) (doesHaveKeyMap map[string]bool, err error) {
 	doesHaveKeyMap = make(map[string]bool)
 
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return doesHaveKeyMap, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return doesHaveKeyMap, err
 	}
@@ -320,11 +339,11 @@ func hasKeys(dbname string, buckets []string, keys []string) (doesHaveKeyMap map
 
 func hasKey(dbname string, bucket string, key string) (doesHaveKey bool, err error) {
 	doesHaveKey = false
-	if _, err := os.Stat(path.Join("dbs", dbname+".db")); os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return doesHaveKey, err
 	}
 
-	db, err := bolt.Open(path.Join("dbs", dbname+".db"), 0755, nil)
+	db, err := bolt.Open(path.Join(dbpath, dbname+".db"), 0755, nil)
 	if err != nil {
 		return doesHaveKey, err
 	}
