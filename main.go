@@ -124,14 +124,14 @@ func main() {
 		r.POST("/v1/db/:dbname/move", handleMove)                    // Move keys, with buckets and keys specified by JSON
 		r.POST("/v1/db/:dbname/create", handleCreateDB)              // Move keys, with buckets and keys specified by JSON
 
-		fmt.Printf("boltdb-server (v. %s) running on %s:%s\n", version, GetLocalIP(), port)
+		fmt.Printf("boltdb-server (v.%s) running on http://%s:%s\n", version, GetLocalIP(), port)
 		r.Run(":" + port) // listen and serve on 0.0.0.0:8080
 		return nil
 	}
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "port, p",
-			Value: "8080",
+			Value: "8050",
 			Usage: "port to use to listen",
 		},
 		cli.StringFlag{
