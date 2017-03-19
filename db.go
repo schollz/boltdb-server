@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path"
 	"sync"
@@ -210,6 +211,25 @@ func getFromDatabase(dbname string, bucket string, keys []string) (map[string]st
 }
 
 func deleteDatabase(dbname string) error {
+	// Check if there is a specific match in the dbpath, otherwise it may
+	// be an attack
+	files, _ := ioutil.ReadDir(path.Join(dbpath))
+	foundDB := false
+	for _, f := range files {
+		if f.Name() == dbname+".db" {
+			foundDB = true
+		}
+	}
+	if !foundDB {
+		return errors.New("Could not find '" + dbname + "'")
+	}
+
+	db, err := getDB(dbname)
+	if err != nil {
+		return err
+	}
+	db.Close()
+
 	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return err
 	}

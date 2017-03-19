@@ -242,5 +242,7 @@ func TestGeneral(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
+	if _, err := os.Stat(path.Join("..", "dbs", "testdb.db")); os.IsExist(err) {
+		t.Errorf("Problem deleting db")
+	}
 }
