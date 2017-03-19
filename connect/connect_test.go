@@ -10,7 +10,7 @@ import (
 
 // Start server with
 // go build; .\boltdb-server.exe
-var testingServer = "http://localhost:8080"
+var testingServer = "http://localhost:8050"
 
 func BenchmarkPost1(b *testing.B) {
 	os.Remove(path.Join("..", "dbs", "testbench.db"))
