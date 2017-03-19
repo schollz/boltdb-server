@@ -10,7 +10,7 @@ width="260" height="80" border="0" alt="BoltDB Server">
 
 <p align="center">A fancy server for Bolt databases</a></p>
 
-*boltdb-server* is a server and package (`connect`) for interfacing
+*boltdb-server* is a server and package (`connect`) for remotely interfacing
 with [boltdb/bolt](https://github.com/boltdb/bolt), a pure-Go embedded key/value database. 
 
 Features
