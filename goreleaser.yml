@@ -1,0 +1,21 @@
+# goreleaser.yml
+# Build customization
+build:
+  binary_name: boltdb-server
+  goos:
+    - windows
+    - darwin
+    - linux
+  goarch:
+    - amd64
+# Archive customization
+archive:
+  format: zip
+  replacements:
+    amd64: 64-bit
+    darwin: macOS
+    linux: linux
+    windows: windows
+  files:
+    - README.md
+    - LICENSE
