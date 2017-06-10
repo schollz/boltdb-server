@@ -51,14 +51,22 @@ func closeDBs() {
 				toDelete = append(toDelete, dbname)
 			}
 		}
+		dbs.Unlock()
 
 		for _, dbname := range toDelete {
 			log.Debug("Closing %s", dbname)
-			dbs.data[dbname].db.Close()
-			delete(dbs.data, dbname)
+			deleteDB(dbname)
 		}
-		dbs.Unlock()
 	}
+}
+
+func deleteDB(dbname string) {
+	dbs.Lock()
+	if _, ok := dbs.data[dbname]; ok {
+		dbs.data[dbname].db.Close()
+		delete(dbs.data, dbname)
+	}
+	dbs.Unlock()
 }
 
 func getNumberKeysInBucket(dbname string, bucket string) (n int, err error) {
@@ -224,11 +232,11 @@ func deleteDatabase(dbname string) error {
 		return errors.New("Could not find '" + dbname + "'")
 	}
 
-	db, err := getDB(dbname)
+	_, err := getDB(dbname)
 	if err != nil {
 		return err
 	}
-	db.Close()
+	deleteDB(dbname)
 
 	if _, err := os.Stat(path.Join(dbpath, dbname+".db")); os.IsNotExist(err) {
 		return err

@@ -13,6 +13,7 @@ package connect
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -250,7 +251,10 @@ func (c *Connection) Stats() (stats map[string]int, err error) {
 		return stats, err
 	}
 	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&stats)
+	if resp.StatusCode == 200 {
+		err = json.NewDecoder(resp.Body).Decode(&stats)
+	} else {
+		err = errors.New("Problem getting stats")
+	}
 	return stats, err
 }

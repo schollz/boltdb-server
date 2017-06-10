@@ -201,6 +201,7 @@ func handleHasKey(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, doesHaveKey)
 }
+
 func handleGetDBStats(c *gin.Context) {
 	dbname := c.Param("dbname")
 	bucketNames, err := getBucketNames(dbname)
